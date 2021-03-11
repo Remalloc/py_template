@@ -4,13 +4,12 @@ import dataset
 import redis
 import simplejson as json
 
-from config.config import CONFIG
 from src.utils import log_error_pro, log_error
 
 
 class Redis(object):
-    def __init__(self, ):
-        self.conn_redis = redis.from_url(CONFIG["DATABASE"]["REDIS_URL"])
+    def __init__(self, url: str):
+        self.conn_redis = redis.from_url(url)
 
     def push(self, name: str, values: Iterable) -> None:
         """
@@ -44,9 +43,21 @@ class Redis(object):
         return json.loads(value[1].decode(), use_decimal=True)
 
     def set(self, name: str, value: str):
+        """
+        设置字符串键值
+        :param name: 键
+        :param value: 值
+        :return: Redis返回值
+        """
         return self.conn_redis.set(name, str(value))
 
-    def get(self, name: str, default=None):
+    def get(self, name: str, default=None) -> str:
+        """
+        获取字符串键的值
+        :param name: 键
+        :param default: 如果未找到返回默认值
+        :return: 字符串或默认值
+        """
         value: bytes = self.conn_redis.get(name)
         if value is not None:
             return value.decode()
@@ -128,6 +139,7 @@ class Database(object):
             self._db = dataset.connect(
                 url, engine_kwargs={"isolation_level": "AUTOCOMMIT", "pool_recycle": 3600, "pool_pre_ping": True}
             )
+        self.types = self._db.types
 
     def log_error_pro(self, e: Exception):
         log_error_pro(self.ERROR_TAG, e)
@@ -150,16 +162,15 @@ class Database(object):
             else:
                 raise
 
-    def select(self, table_name: str, *clauses, **filters) -> list:
+    def select(self, table_name: str, **filters) -> list:
         """
         查询select("test",id=0,type=0)
         :param table_name: 表名
-        :param clauses: 查询条件, 三元组(字段名, 比较符, 值)
-        :param filters: 约束
+        :param filters: 约束, 如: col={">=":1}
         :return: 结果元组
         """
-        if clauses or filters:
-            return list(self._db[table_name].find(*clauses, **filters))
+        if filters:
+            return list(self._db[table_name].find(**filters))
         else:
             return list(self._db[table_name].all())
 

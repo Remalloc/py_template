@@ -1,4 +1,5 @@
 [DATABASE]
 REDIS_URL = "redis://:passwd@localhost:6379/10"
 PGSQL_URL = "postgresql://account:passwd@localhost:3306/database"
-MYSQL_URL = "mysql+mysqlconnector://account:passwd@localhost:3306/database"
+#MYSQL_URL = "mysql+mysqlconnector://account:passwd@localhost:3306/database"
+MYSQL_URL = "mysql+mysqlconnector://root:chainext123456@47.74.235.176:5555/trade_signal"

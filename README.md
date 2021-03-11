@@ -1,2 +1,14 @@
 # py_template
-The template for init python project
+
+Python 项目初始化模板
+
+## 目录说明
+
+1. 主程序的入口统一放在项目根目录下， 命名与项目名一致， 本例为[py_template.py](py_template.py)， 如果可以启动多个服务用启动命令区分。
+2. 配置文件目录为config， 所有配置文件以.toml结尾， 使用哪种的配置根据环境变量而定（可以放入启动命令中设置），使用时需要导入CONFIG变量（注意如果使用的配置变量不存在会运行时出错）。
+3. 所有项目源码放入src目录中，里面有通用包（utils）使用方式查看[example.py](src/example.py)。
+4. tools目录存放工具类脚本，如定时任务，单次使用脚本，独立于主程序使用。（所有工具类脚本仍需要通过主程序启动，不然无法使用配置文件和通用包）。
+
+## 注意
+1. 根据项目的不同依赖项会有差异，建议使用~=写法写入[requirements.txt](requirements.txt), 每次运行时会更新为当前版本的最新稳定版，如1.4.0=>1.4.6 但不会升级大版本。
+2. 建议直接使用[click](https://click.palletsprojects.com)包生成启动命令，它包含了参数校检，混合编排，帮助命令等功能，很容易编写启动命令。
