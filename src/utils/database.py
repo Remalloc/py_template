@@ -1,6 +1,7 @@
-from typing import Iterable, Dict, Callable
+from typing import Iterable, Dict, Callable, Iterator, List
 
 import dataset
+import pandas as pd
 import redis
 import simplejson as json
 
@@ -140,6 +141,7 @@ class Database(object):
                 url, engine_kwargs={"isolation_level": "AUTOCOMMIT", "pool_recycle": 3600, "pool_pre_ping": True}
             )
         self.types = self._db.types
+        self.engine = self._db.engine
 
     def log_error_pro(self, e: Exception):
         log_error_pro(self.ERROR_TAG, e)
@@ -202,6 +204,35 @@ class Database(object):
             else:
                 raise
 
+    def insert_df_ignore(self, table_name: str, data: pd.DataFrame) -> None:
+        """
+        忽略主键冲突插入, 会建一个临时表(temp_原表名), 插入完成后会删除
+        :param table_name: 插入表名
+        :param data: DataFrame
+        :return: None
+        """
+        temp_table_name = "temp_" + table_name
+        data.to_sql(temp_table_name, self.engine, if_exists="replace", chunksize=1000, index=False)
+        temp_columns = str(tuple(self._db.load_table(temp_table_name).columns)).replace("'", "`")
+        with self.engine.begin() as cnx:
+            insert_sql = f"INSERT IGNORE INTO {table_name}{temp_columns} (SELECT * FROM {temp_table_name})"
+            cnx.execute(insert_sql)
+            cnx.execute(f"DROP TABLE {temp_table_name}")
+
+    def read_df_table(
+            self, table_name: str, where: str = "", order_by: str = "", chunksize: int = 10000, is_merged=False
+    ) -> (Iterator, pd.DataFrame):
+        sql = f"SELECT * FROM {table_name} " \
+              f"{'WHERE ' + where if where else ''} " \
+              f"{'ORDER BY ' + order_by if order_by else ''}"
+        if is_merged:
+            res = pd.DataFrame()
+            for df in pd.read_sql_query(sql, self.engine, chunksize=chunksize):
+                res = res.append(df)
+            return res
+        else:
+            return pd.read_sql_query(sql, self.engine, chunksize=chunksize)
+
     def insert_ignore(self, table_name: str, data: dict, keys: list, is_handle_error=False) -> bool:
         """
         如果关键字不相同就插入数据
@@ -241,6 +272,26 @@ class Database(object):
                 raise
         return True
 
+    def insert_many_ignore(self, table_name: str, data: List[Dict]) -> None:
+        """
+        忽略主键冲突插入, 会建一个临时表(temp_原表名), 插入完成后会删除
+        :param table_name: 插入表名
+        :param data: DataFrame
+        :return: None
+        """
+        if not data:
+            return
+        temp_table_name = "temp_" + table_name
+        table = self._db[temp_table_name]
+        table.drop()
+        table.insert_many(data, types={k: self.types.text for k, v in data[0].items()})
+        table.drop_column("id")
+        temp_columns = str(tuple(self._db.load_table(temp_table_name).columns)).replace("'", "`")
+        with self._db.engine.begin() as cnx:
+            insert_sql = f"INSERT IGNORE INTO {table_name}{temp_columns} (SELECT * FROM {temp_table_name})"
+            cnx.execute(insert_sql)
+            cnx.execute(f"DROP TABLE {temp_table_name}")
+
     def upsert(self, table_name: str, data: dict, keys: list, is_handle_error=False) -> bool:
         """
         插入更新,不存在就插入,存在就更新
@@ -253,6 +304,25 @@ class Database(object):
         table = self._db[table_name]
         try:
             return True if table.upsert(data, keys, ensure=False) else False
+        except Exception as e:
+            if is_handle_error:
+                self.log_error(e)
+                return False
+            else:
+                raise
+
+    def upsert_many(self, table_name: str, data: List[Dict], keys: list, is_handle_error=False) -> bool:
+        """
+        批量插入更新,不存在就插入,存在就更新
+        :param table_name: 表名
+        :param data: 插入数据[{row1:v1,row2:v2...}...]
+        :param keys: 关键字,关键字相同则认为数据相同
+        :param is_handle_error: 当执行SQL时发生错误捕获异常日志返回失败, False:发生错误时直接向调用者抛出异常
+        :return:
+        """
+        table = self._db[table_name]
+        try:
+            return True if table.upsert_many(data, keys, ensure=False) else False
         except Exception as e:
             if is_handle_error:
                 self.log_error(e)

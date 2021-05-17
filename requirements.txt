@@ -3,6 +3,7 @@ loguru~=0.5.3
 toml~=0.10.2
 simplejson~=3.17.2
 click~=7.1.2
+pandas~=1.2.4
 # 数据库驱动非必要
 redis~=3.5.3
 mysql-connector-python~=8.0.23
