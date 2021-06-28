@@ -3,3 +3,12 @@ REDIS_URL = "redis://:passwd@localhost:6379/10"
 PGSQL_URL = "postgresql://account:passwd@localhost:3306/database"
 #MYSQL_URL = "mysql+mysqlconnector://account:passwd@localhost:3306/database"
 MYSQL_URL = "mysql+mysqlconnector://root:chainext123456@47.74.235.176:5555/trade_signal"
+
+[ALARM]
+[ALARM.EMAIL]
+SMTP_SERVER = "smtp.office365.com"
+SMTP_PORT = 587
+SMTP_ACCOUNT = "equityswap@outlook.com"
+SMTP_PASSWORD = "i14Oj9vUXDVChc5jCN9b"
+SENDER = "equityswap@outlook.com"
+RECIPIENTS = ["vbover@163.com"]
